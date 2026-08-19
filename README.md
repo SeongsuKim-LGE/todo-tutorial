@@ -12,7 +12,7 @@
 - Next.js 16 (App Router, Turbopack)
 - React 19
 - Tailwind CSS v4
-- shadcn/ui (radix-maia 스타일, taupe 베이스)
+- shadcn/ui (radix-mira 스타일, taupe 베이스)
 - TypeScript / ESLint / Prettier
 - 패키지 매니저: bun 1.3.6
 
