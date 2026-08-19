@@ -167,3 +167,185 @@ describe("useTodos 손상 데이터 보호", () => {
     });
   });
 });
+
+describe("useTodos 편집(editTodo)", () => {
+  it("텍스트만 변경하고 나머지 필드는 그대로 보존한다", () => {
+    const { result } = renderHook(() => useTodos());
+
+    act(() => {
+      result.current.addTodo("원본 텍스트", "high", "2026-07-01", "work");
+    });
+    const before = result.current.todos[0];
+
+    act(() => {
+      result.current.editTodo(before.id, "수정된 텍스트");
+    });
+
+    expect(result.current.todos).toHaveLength(1);
+    expect(result.current.todos[0]).toEqual({
+      ...before,
+      text: "수정된 텍스트",
+    });
+  });
+
+  it("다른 항목의 텍스트에는 영향을 주지 않는다", () => {
+    const { result } = renderHook(() => useTodos());
+
+    act(() => {
+      result.current.addTodo("A");
+    });
+    act(() => {
+      result.current.addTodo("B");
+    });
+    const idA = result.current.todos.find((todo) => todo.text === "A")!.id;
+    const idB = result.current.todos.find((todo) => todo.text === "B")!.id;
+
+    act(() => {
+      result.current.editTodo(idB, "B 수정");
+    });
+
+    expect(result.current.todos.find((todo) => todo.id === idA)?.text).toBe(
+      "A"
+    );
+    expect(result.current.todos.find((todo) => todo.id === idB)?.text).toBe(
+      "B 수정"
+    );
+  });
+
+  it("편집한 내용을 localStorage에 반영한다", async () => {
+    const { result } = renderHook(() => useTodos());
+
+    act(() => {
+      result.current.addTodo("원본");
+    });
+    const id = result.current.todos[0].id;
+
+    act(() => {
+      result.current.editTodo(id, "수정본");
+    });
+
+    await waitFor(() => {
+      const stored = JSON.parse(localStorage.getItem("todos") ?? "[]");
+      expect(stored[0]?.text).toBe("수정본");
+    });
+  });
+
+  it("앞뒤 공백은 trim해서 저장한다", () => {
+    const { result } = renderHook(() => useTodos());
+
+    act(() => {
+      result.current.addTodo("원본");
+    });
+    const id = result.current.todos[0].id;
+
+    act(() => {
+      result.current.editTodo(id, "  다듬은 텍스트  ");
+    });
+
+    expect(result.current.todos[0].text).toBe("다듬은 텍스트");
+  });
+
+  it("빈 문자열로 편집하면 해당 항목을 삭제한다", () => {
+    const { result } = renderHook(() => useTodos());
+
+    act(() => {
+      result.current.addTodo("삭제될 항목");
+    });
+    const id = result.current.todos[0].id;
+
+    act(() => {
+      result.current.editTodo(id, "");
+    });
+
+    expect(result.current.todos).toHaveLength(0);
+  });
+
+  it("공백만 있는 문자열로 편집해도 삭제 처리하고 다른 항목은 남긴다", () => {
+    const { result } = renderHook(() => useTodos());
+
+    act(() => {
+      result.current.addTodo("A");
+    });
+    act(() => {
+      result.current.addTodo("B");
+    });
+    const idA = result.current.todos.find((todo) => todo.text === "A")!.id;
+
+    act(() => {
+      result.current.editTodo(idA, "   ");
+    });
+
+    expect(result.current.todos).toHaveLength(1);
+    expect(result.current.todos[0].text).toBe("B");
+  });
+});
+
+describe("useTodos 토글/삭제 정확성", () => {
+  it("toggleTodo는 지정한 id의 항목만 완료 상태를 뒤집는다", () => {
+    const { result } = renderHook(() => useTodos());
+
+    act(() => {
+      result.current.addTodo("A");
+    });
+    act(() => {
+      result.current.addTodo("B");
+    });
+    act(() => {
+      result.current.addTodo("C");
+    });
+    const idB = result.current.todos.find((todo) => todo.text === "B")!.id;
+
+    act(() => {
+      result.current.toggleTodo(idB);
+    });
+
+    const byText = (text: string) =>
+      result.current.todos.find((todo) => todo.text === text);
+    expect(byText("B")?.completed).toBe(true);
+    expect(byText("A")?.completed).toBe(false);
+    expect(byText("C")?.completed).toBe(false);
+  });
+
+  it("toggleTodo를 같은 id로 두 번 호출하면 원래 상태로 되돌아온다", () => {
+    const { result } = renderHook(() => useTodos());
+
+    act(() => {
+      result.current.addTodo("A");
+    });
+    const id = result.current.todos[0].id;
+
+    act(() => {
+      result.current.toggleTodo(id);
+    });
+    act(() => {
+      result.current.toggleTodo(id);
+    });
+
+    expect(result.current.todos[0].completed).toBe(false);
+  });
+
+  it("deleteTodo는 지정한 id의 항목만 제거하고 나머지 순서를 유지한다", () => {
+    const { result } = renderHook(() => useTodos());
+
+    act(() => {
+      result.current.addTodo("A");
+    });
+    act(() => {
+      result.current.addTodo("B");
+    });
+    act(() => {
+      result.current.addTodo("C");
+    });
+    // addTodo는 배열 앞에 추가하므로 현재 순서는 [C, B, A]
+    const idB = result.current.todos.find((todo) => todo.text === "B")!.id;
+
+    act(() => {
+      result.current.deleteTodo(idB);
+    });
+
+    expect(result.current.todos.map((todo) => todo.text)).toEqual([
+      "C",
+      "A",
+    ]);
+  });
+});
