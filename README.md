@@ -34,6 +34,8 @@ bun run start      # 빌드 결과 실행
 bun run lint       # ESLint
 bun run typecheck  # tsc --noEmit
 bun run format     # Prettier 포맷팅
+bun run test       # Vitest 실행
+bun run test:watch # Vitest watch 모드
 ```
 
 ## 챕터별 시작 브랜치
